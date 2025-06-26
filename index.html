@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faucet Koin Sederhana</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the Inter font and overall look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        .container {
+            max-width: 500px;
+        }
+        .rounded-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .rounded-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        .disabled-button {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="container bg-white p-8 rounded-lg shadow-xl text-center border-t-4 border-blue-500">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">Faucet Koin Sederhana</h1>
+        <p class="text-gray-600 mb-6">Klaim koin gratis Anda setiap <span id="cooldownTimeDisplay"></span> detik!</p>
+
+        <div class="mb-6">
+            <p class="text-lg text-gray-700">Saldo Anda:</p>
+            <p id="balanceDisplay" class="text-5xl font-extrabold text-blue-600">0.00</p>
+            <span class="text-xl text-gray-500">KOIN</span>
+        </div>
+
+        <button id="claimButton"
+                class="rounded-button bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out">
+            Klaim Sekarang!
+        </button>
+
+        <p id="messageDisplay" class="mt-4 text-sm text-gray-500"></p>
+    </div>
+
+    <script>
+        // Global variables for elements
+        const balanceDisplay = document.getElementById('balanceDisplay');
+        const claimButton = document.getElementById('claimButton');
+        const messageDisplay = document.getElementById('messageDisplay');
+        const cooldownTimeDisplay = document.getElementById('cooldownTimeDisplay');
+
+        // Faucet configuration
+        const COIN_PER_CLAIM = 0.05; // Amount of coin given per claim
+        const COOLDOWN_SECONDS = 60; // Cooldown period in seconds
+        let balance = parseFloat(localStorage.getItem('faucetBalance')) || 0;
+        let lastClaimTime = parseInt(localStorage.getItem('faucetLastClaimTime')) || 0; // Unix timestamp in milliseconds
+
+        // Function to update the balance display
+        function updateBalanceDisplay() {
+            balanceDisplay.textContent = balance.toFixed(2); // Display with 2 decimal places
+        }
+
+        // Function to update the claim button and message based on cooldown
+        function updateClaimState() {
+            const currentTime = Date.now(); // Current time in milliseconds
+            const nextClaimTime = lastClaimTime + (COOLDOWN_SECONDS * 1000);
+            const timeLeft = Math.max(0, nextClaimTime - currentTime); // Time left in milliseconds
+
+            if (timeLeft === 0) {
+                claimButton.removeAttribute('disabled');
+                claimButton.classList.remove('disabled-button');
+                claimButton.textContent = 'Klaim Sekarang!';
+                messageDisplay.textContent = '';
+            } else {
+                claimButton.setAttribute('disabled', 'true');
+                claimButton.classList.add('disabled-button');
+                const secondsLeft = Math.ceil(timeLeft / 1000);
+                messageDisplay.textContent = `Anda bisa klaim lagi dalam ${secondsLeft} detik.`;
+                claimButton.textContent = `Tunggu... (${secondsLeft}s)`;
+            }
+        }
+
+        // Event listener for the claim button
+        claimButton.addEventListener('click', () => {
+            const currentTime = Date.now();
+            const nextClaimTime = lastClaimTime + (COOLDOWN_SECONDS * 1000);
+
+            if (currentTime >= nextClaimTime) {
+                // User can claim
+                balance += COIN_PER_CLAIM;
+                lastClaimTime = currentTime;
+
+                // Save to local storage
+                localStorage.setItem('faucetBalance', balance.toString());
+                localStorage.setItem('faucetLastClaimTime', lastClaimTime.toString());
+
+                updateBalanceDisplay();
+                updateClaimState(); // Update immediately to show cooldown
+            } else {
+                // Should not happen if button is disabled, but good for robustness
+                updateClaimState();
+            }
+        });
+
+        // Initialize display on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateBalanceDisplay();
+            cooldownTimeDisplay.textContent = COOLDOWN_SECONDS; // Display the cooldown time
+            updateClaimState(); // Initial check for cooldown
+
+            // Update cooldown timer every second
+            setInterval(updateClaimState, 1000);
+        });
+    </script>
+</body>
+</html>
